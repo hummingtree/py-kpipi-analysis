@@ -130,55 +130,6 @@ def read_hummingtree_rst_file(filename):
         
         return [ Z24gg, dZ24gg, Z24qq, dZ24qq ] 
 
-def read_hummingtree_lat_file(filename, parity):
-    MQ1lat = np.genfromtxt(filename+"M-Q1-"+parity+".dat")
-    MQ1lat_jack = np.genfromtxt(filename+"M-Q1-"+parity+"_jacks.dat")
-    MQ7lat = np.genfromtxt(filename+"M-Q1-"+parity+".dat")
-    MQ7lat_jack = np.genfromtxt(filename+"M-Q1-"+parity+"_jacks.dat")
-    MQ8lat = np.genfromtxt(filename+"M-Q1-"+parity+".dat")
-    MQ8lat_jack = np.genfromtxt(filename+"M-Q1-"+parity+"_jacks.dat")
-
-
-    with open(filename) as f:
-        lines = f.readlines()
-        line = 0
-        scheme_count = 0
-        while line<len(lines):
-            if 'real Z_5x5_zero:' in lines[line]:
-                p = re.compile('(.*)\((.*)\)')
-                m = p.search(lines[line+1].split('&')[0])
-                Z24[0][0] = np.float(m.group(1))
-                dZ24[0][0] = np.float(m.group(2))/10.**collapse_notation(m.group(1))
-                
-                m = p.search(lines[line+2].split('&')[1])
-                Z24[1][1] = np.float(m.group(1))
-                dZ24[1][1] = np.float(m.group(2))/10.**collapse_notation(m.group(1))
-
-                m = p.search(lines[line+2].split('&')[2])
-                Z24[1][2] = np.float(m.group(1))
-                dZ24[1][2] = np.float(m.group(2))/10.**collapse_notation(m.group(1))
-                
-                m = p.search(lines[line+3].split('&')[1])
-                Z24[2][1] = np.float(m.group(1))
-                dZ24[2][1] = np.float(m.group(2))/10.**collapse_notation(m.group(1))
-                
-                m = p.search(lines[line+3].split('&')[2])
-                Z24[2][2] = np.float(m.group(1))
-                dZ24[2][2] = np.float(m.group(2))/10.**collapse_notation(m.group(1))
-                
-                if scheme_count>0:
-                    Z24qq = Z24
-                    dZ24qq = dZ24
-                else:
-                    Z24gg = Z24
-                    dZ24gg = dZ24
-
-                scheme_count += 1
-            
-            line += 1
-        
-        return [ Z24gg, dZ24gg, Z24qq, dZ24qq ] 
-
 def generate_random_matrix( central, std ):
     rtn = deepcopy(central)
     for [i,j] in [[1,1], [2,2], [2,3], [3,2], [3,3]]:
@@ -214,7 +165,7 @@ def chiral_extrapolation_test( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32
 #    central_sigma=( a24sqr*np.dot( np.linalg.inv(Z32l), Z32h ) - a32sqr*np.dot( np.linalg.inv(Z24l), Z24h ) )/( a24sqr - a32sqr )
     return [ central_sigma, np.sqrt( ssigma2/sample_size-ssigma*ssigma/(sample_size*sample_size) ) ] 
 
-def multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID ):
+def multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID, jMQx, jSqrtLL ):
    
 #TODO Need to divide by ZV/A and put in the -2 and -1/2
 #DID.    
@@ -236,18 +187,20 @@ def multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID ):
    
     # linear extrapolation
     sigma = ( a24sqr*np.dot( np.linalg.inv(sZ32h), sZ32l ) - a32sqr*np.dot( np.linalg.inv(sZ24h), sZ24l ) )/( a24sqr - a32sqr )
-    tmp1 = np.dot( sigma, ZA*sZ24ID )
+    tmp1 = np.dot( sigma, ZA*ZA*sZ24ID )
     tmp2 = np.dot( msb5rismom, tmp1 )
     # basis changing
     tmp2[1][2] *= -0.5
     tmp2[2][1] *= -2.
     
     tmpRe = np.dot( wcRe, tmp2)
+    ARe = np.dot( tmpRe, jSqrtLL*jMQx )
     tmpIm = np.dot( wcIm, tmp2)
+    AIm = np.dot( tmpIm, jSqrtLL*jMQx )
     
-    return [ tmpRe, tmpIm ]
+    return [ ARe, AIm ]
 
-def chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24ID, dZ24ID ):
+def chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24ID, dZ24ID, MQxlat, MQxlat_jack, sqrtLL, sqrtLL_jack ):
    
     sample_size = 1000
     
@@ -256,6 +209,11 @@ def chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z2
     MIm = np.array( [0.,0.,0.] )
     MIm2 = np.array( [0.,0.,0.] )
 
+    ARe = 0.
+    ARe2 = 0.
+    AIm = 0.
+    AIm2 = 0.
+
     for s in range(sample_size):
         sZ24l = generate_random_matrix( Z24l, dZ24l )
         sZ24h = generate_random_matrix( Z24h, dZ24h )
@@ -263,17 +221,28 @@ def chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z2
         sZ32h = generate_random_matrix( Z32h, dZ32h )
         sZ24ID= generate_random_matrix( Z24ID, dZ24ID )
         
-        [ tmpRe, tmpIm ] = multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID )
+        [ tmpRe, tmpIm ] = multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID, MQxlat, sqrtLL )
         
-        MRe = MRe + tmpRe
-        MRe2 = MRe2 + tmpRe*tmpRe
-        MIm = MIm + tmpIm
-        MIm2 = MIm2 + tmpIm*tmpIm
+        ARe =  ARe + tmpRe
+        ARe2 = ARe2 + tmpRe*tmpRe
+        AIm =  AIm + tmpIm
+        AIm2 = AIm2 + tmpIm*tmpIm
 
-    [ central_tmpRe, central_tmpIm ] = multiplication( Z24l, Z24h, Z32l, Z32h, Z24ID )
-
+    for j in range(len(MQxlat_jack)):
+        [ tmpRe, tmpIm ] = multiplication( Z24l, Z24h, Z32l, Z32h, Z24ID, MQxlat_jack[j], sqrtLL_jack[j] )
+        ARe =  ARe + tmpRe
+        ARe2 = ARe2 + tmpRe*tmpRe
+        AIm =  AIm + tmpIm
+        AIm2 = AIm2 + tmpIm*tmpIm
+    
+    [ central_tmpRe, central_tmpIm ] = multiplication( Z24l, Z24h, Z32l, Z32h, Z24ID, MQxlat, sqrtLL )
+    
+    sample_size += len(MQxlat_jack)
+    dARe = np.sqrt( ARe2/sample_size-ARe*ARe/(sample_size*sample_size) )
+    dAIm = np.sqrt( AIm2/sample_size-AIm*AIm/(sample_size*sample_size) )
 #    central_sigma=( a24sqr*np.dot( np.linalg.inv(Z32l), Z32h ) - a32sqr*np.dot( np.linalg.inv(Z24l), Z24h ) )/( a24sqr - a32sqr )
-    return [ central_tmpRe, np.sqrt( MRe2/sample_size-MRe*MRe/(sample_size*sample_size) ), central_tmpIm, np.sqrt( MIm2/sample_size-MIm*MIm/(sample_size*sample_size) ) ]
+    
+    return [ central_tmpRe, dARe, central_tmpIm, dAIm ]
 
 #TODO Nicolas Garron's values are the inverse of the Z matrix we want, i.e. Z_V**2/Z_O
 
@@ -292,7 +261,48 @@ print dZ24IDqq
 [ Z24l, dZ24l, Z24h, dZ24h ] = load_nicolas_Z("L_all/L_naive_chiral_24cubed_qq.out", 1.4363, 3.) # 24I
 [ Z32l, dZ32l, Z32h, dZ32h ] = load_nicolas_Z("L_all/L_naive_chiral_32cubed_qq.out", 1.4363, 3.) # 24I
 
+### ntw = 3
+
 filename = "../correlator_fits/results/fit_params"
+parity   = "1"
+
+MQ1lat = np.genfromtxt(filename+"/M-Q1-"+parity+".dat")
+MQ1lat_jack = np.genfromtxt(filename+"/M-Q1-"+parity+"_jacks.dat")
+MQ7lat = np.genfromtxt(filename+"/M-Q7-"+parity+".dat")
+MQ7lat_jack = np.genfromtxt(filename+"/M-Q7-"+parity+"_jacks.dat")
+MQ8lat = np.genfromtxt(filename+"/M-Q8-"+parity+".dat")
+MQ8lat_jack = np.genfromtxt(filename+"/M-Q8-"+parity+"_jacks.dat")
+
+sqrtLL = np.genfromtxt(filename+"/sqrtLL-"+parity+".dat")
+sqrtLL_jack = np.genfromtxt(filename+"/sqrtLL-"+parity+"_jacks.dat")
+
+print MQ1lat
+print MQ1lat_jack
+
+Mlat = np.array([ MQ1lat, MQ7lat, MQ8lat ])
+Mlat_jack = [ np.array([ MQ1lat_jack[j], MQ7lat_jack[j], MQ8lat_jack[j] ]) for j in range(len(MQ1lat_jack)) ]
+
+[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
+
+GF  = 1.16637e-5
+Vud = 0.9743
+Vus = 0.2253
+a24IDinv = 1.0083
+
+const_term = GF / np.sqrt(2.) * Vud * Vus * np.sqrt(3./2.) * np.sqrt(2.**3) / np.sqrt(2.) * a24IDinv**3 
+
+ARe = wcRe * const_term
+dARe = dwcRe * const_term
+AIm = wcIm * const_term
+dAIm = dwcIm * const_term
+
+print ARe
+print dARe
+print AIm
+print dAIm
+
+### ntw = 0
+
 parity   = "0"
 
 MQ1lat = np.genfromtxt(filename+"/M-Q1-"+parity+".dat")
@@ -302,21 +312,35 @@ MQ7lat_jack = np.genfromtxt(filename+"/M-Q7-"+parity+"_jacks.dat")
 MQ8lat = np.genfromtxt(filename+"/M-Q8-"+parity+".dat")
 MQ8lat_jack = np.genfromtxt(filename+"/M-Q8-"+parity+"_jacks.dat")
 
+sqrtLL = np.genfromtxt(filename+"/sqrtLL-"+parity+".dat")
+sqrtLL_jack = np.genfromtxt(filename+"/sqrtLL-"+parity+"_jacks.dat")
+
 print MQ1lat
 print MQ1lat_jack
 
-[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq )
-print wcRe
-print dwcRe
-print wcIm
-print dwcIm
+Mlat = np.array([ MQ1lat, MQ7lat, MQ8lat ])
+Mlat_jack = [ np.array([ MQ1lat_jack[j], MQ7lat_jack[j], MQ8lat_jack[j] ]) for j in range(len(MQ1lat_jack)) ]
 
-a = np.array([[3,1], [1,2]])
-b = np.array([[3,5], [1,2]])
+[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
 
-c = np.array([1,1])
-print np.sqrt(a)
+const_term = GF / np.sqrt(2.) * Vud * Vus * np.sqrt(3./2.) * np.sqrt(2.**0) / np.sqrt(2.) * a24IDinv**3 
 
-a[0][0] = 4.3
+ARe = wcRe * const_term
+dARe = dwcRe * const_term
+AIm = wcIm * const_term
+dAIm = dwcIm * const_term
 
-print np.dot( c, b )
+print ARe
+print dARe
+print AIm
+print dAIm
+
+#a = np.array([[3,1], [1,2]])
+#b = np.array([[3,5], [1,2]])
+#
+#c = np.array([1,1])
+#print np.sqrt(a)
+#
+#a[0][0] = 4.3
+#
+#print np.dot( c, b )

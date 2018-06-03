@@ -178,7 +178,10 @@ def multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID, jMQx, jSqrtLL ):
 #    print wcRe
     wcIm = wc.imag
 #    print wcIm
-    msb5rismom = np.array( [[0.99112, 0., 0.], [0., 1.00084, 0.00506], [0., 0.00599, 1.02921]] )
+### q,q
+#    msb5rismom = np.array( [[0.99112, 0., 0.], [0., 1.00084, 0.00506], [0., 0.00599, 1.02921]] )
+### g,g
+    msb5rismom = np.array( [[1.00084, 0., 0.], [0., 1.00084, 0.00506], [0., 0.01576, 1.08781]] )
 
     a24 = 1./1.785
     a32 = 1./2.383
@@ -250,16 +253,21 @@ def chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z2
 [ Z24l, dZ24l, Z24h, dZ24h ] = load_nicolas_Z("L_all/L_naive_chiral_24cubed_qq.out", 3., 2.) # 24I
 [ Z32l, dZ32l, Z32h, dZ32h ] = load_nicolas_Z("L_all/L_naive_chiral_32cubed_qq.out", 3., 2.) # 24I
 [ sigma, dsigma ] = chiral_extrapolation_test( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h )
-print sigma
-print dsigma
+#print sigma
+#print dsigma
 
 # Now the real calculation
 [ Z24IDgg, dZ24IDgg, Z24IDqq, dZ24IDqq ] = read_hummingtree_rst_file("24x64x24ID/24x64x24ID_ZBK_x3.8474_mass0.0011.rst")
-print Z24IDqq
-print dZ24IDqq
+#print Z24IDqq
+#print dZ24IDqq
 
-[ Z24l, dZ24l, Z24h, dZ24h ] = load_nicolas_Z("L_all/L_naive_chiral_24cubed_qq.out", 1.4363, 3.) # 24I
-[ Z32l, dZ32l, Z32h, dZ32h ] = load_nicolas_Z("L_all/L_naive_chiral_32cubed_qq.out", 1.4363, 3.) # 24I
+### q,q
+#[ Z24l, dZ24l, Z24h, dZ24h ] = load_nicolas_Z("L_all/L_naive_chiral_24cubed_qq.out", 1.4363, 3.) # 24I
+#[ Z32l, dZ32l, Z32h, dZ32h ] = load_nicolas_Z("L_all/L_naive_chiral_32cubed_qq.out", 1.4363, 3.) # 24I
+
+### g,g
+[ Z24l, dZ24l, Z24h, dZ24h ] = load_nicolas_Z("L_all/L_naive_chiral_24cubed_gg.out", 1.4363, 3.) # 24I
+[ Z32l, dZ32l, Z32h, dZ32h ] = load_nicolas_Z("L_all/L_naive_chiral_32cubed_gg.out", 1.4363, 3.) # 24I
 
 ### ntw = 3
 
@@ -276,13 +284,16 @@ MQ8lat_jack = np.genfromtxt(filename+"/M-Q8-"+parity+"_jacks.dat")
 sqrtLL = np.genfromtxt(filename+"/sqrtLL-"+parity+".dat")
 sqrtLL_jack = np.genfromtxt(filename+"/sqrtLL-"+parity+"_jacks.dat")
 
-print MQ1lat
-print MQ1lat_jack
+#print MQ1lat
+#print MQ1lat_jack
 
 Mlat = np.array([ MQ1lat, MQ7lat, MQ8lat ])
 Mlat_jack = [ np.array([ MQ1lat_jack[j], MQ7lat_jack[j], MQ8lat_jack[j] ]) for j in range(len(MQ1lat_jack)) ]
 
-[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
+### q,q
+#[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
+### g,g
+[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDgg, dZ24IDgg, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
 
 GF  = 1.16637e-5
 Vud = 0.9743
@@ -296,10 +307,7 @@ dARe = dwcRe * const_term
 AIm = wcIm * const_term
 dAIm = dwcIm * const_term
 
-print ARe
-print dARe
-print AIm
-print dAIm
+print "A_2 = %+.6e +- %.6e %+.6e +- %.6e" % (ARe, dARe, AIm, dAIm)
 
 ### ntw = 0
 
@@ -315,13 +323,16 @@ MQ8lat_jack = np.genfromtxt(filename+"/M-Q8-"+parity+"_jacks.dat")
 sqrtLL = np.genfromtxt(filename+"/sqrtLL-"+parity+".dat")
 sqrtLL_jack = np.genfromtxt(filename+"/sqrtLL-"+parity+"_jacks.dat")
 
-print MQ1lat
-print MQ1lat_jack
+#print MQ1lat
+#print MQ1lat_jack
 
 Mlat = np.array([ MQ1lat, MQ7lat, MQ8lat ])
 Mlat_jack = [ np.array([ MQ1lat_jack[j], MQ7lat_jack[j], MQ8lat_jack[j] ]) for j in range(len(MQ1lat_jack)) ]
 
-[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
+### q,q
+#[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
+### g,g
+[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDgg, dZ24IDgg, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
 
 const_term = GF / np.sqrt(2.) * Vud * Vus * np.sqrt(3./2.) * np.sqrt(2.**0) / np.sqrt(2.) * a24IDinv**3 
 
@@ -330,10 +341,7 @@ dARe = dwcRe * const_term
 AIm = wcIm * const_term
 dAIm = dwcIm * const_term
 
-print ARe
-print dARe
-print AIm
-print dAIm
+print "A_2 = %+.6e +- %.6e %+.6e +- %.6e" % (ARe, dARe, AIm, dAIm)
 
 #a = np.array([[3,1], [1,2]])
 #b = np.array([[3,5], [1,2]])

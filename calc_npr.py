@@ -142,14 +142,15 @@ def read_hummingtree_rst_file(filename):
                 dZ24[2][2] = np.float(m.group(2))/10.**collapse_notation(m.group(1))
                 
                 if scheme_count>0:
-                    Z24qq = Z24
-                    dZ24qq = dZ24
+                    Z24qq = deepcopy(Z24)
+                    dZ24qq = deepcopy(dZ24)
                 else:
-                    Z24gg = Z24
-                    dZ24gg = dZ24
-
+                    Z24gg = deepcopy(Z24)
+                    dZ24gg = deepcopy(dZ24)
+#                print scheme_count
+#                print [ Z24gg, dZ24gg, Z24qq, dZ24qq ]
                 scheme_count += 1
-            
+                 
             line += 1
         
         return [ Z24gg, dZ24gg, Z24qq, dZ24qq ] 
@@ -190,11 +191,14 @@ def chiral_extrapolation_test( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32
     return [ central_sigma, np.sqrt( ssigma2/sample_size-ssigma*ssigma/(sample_size*sample_size) ) ] 
 
 def multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID, jMQx, jSqrtLL, scheme ):
-   
-#TODO Need to divide by ZV/A and put in the -2 and -1/2
-#DID.    
+    """
+    See David Murphy's result for ZA
+    """
     ZA = 0.73457
-
+    
+    """
+    See Elaine Goode's thesis table 3.3 for the Wilson coefficients
+    """
     tau = (+0.0014606)+(-0.00060408j)
     #Wilson coefficient MSbar 3 GeV
     wc = np.array( [ (+2.90342e-1)+(-3.97252e-3)*tau, (+4.70099e-5)+(-8.09555e-5)*tau, (-5.22390e-5)+(+3.26016e-4)*tau ] )
@@ -202,12 +206,18 @@ def multiplication( sZ24l, sZ24h, sZ32l, sZ32h, sZ24ID, jMQx, jSqrtLL, scheme ):
 #    print wcRe
     wcIm = wc.imag
 #    print wcIm
-    
+   
+    """
+    See table VIII and IX in arxiv:1708.03552
+    """
     if scheme=="qq":
         msb5rismom = np.array( [[0.99112, 0., 0.], [0., 1.00084, 0.00506], [0., 0.00599, 1.02921]] )
     else:
-        msb5rismom = np.array( [[1.00084, 0., 0.], [0., 1.00084, 0.00506], [0., 0.01576, 1.08781]] )
+        msb5rismom = np.array( [[1.00414, 0., 0.], [0., 1.00084, 0.00506], [0., 0.01576, 1.08781]] )
 
+    """
+    See table II in arxiv:1708.03552 for lattice spacing
+    """
     a24 = 1./1.785
     a32 = 1./2.383
     a24sqr = a24*a24
@@ -265,6 +275,15 @@ def chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z2
     
     [ central_tmpRe, central_tmpIm ] = multiplication( Z24l, Z24h, Z32l, Z32h, Z24ID, MQxlat, sqrtLL, scheme )
     
+#    print Z24l
+#    print Z24h
+#    print Z32l
+#    print Z32h
+    
+#    print np.dot( np.linalg.inv(sZ24h), sZ24l )
+#    print np.dot( np.linalg.inv(sZ32h), sZ32l )
+#    print Z24ID
+
     sample_size += len(MQxlat_jack)
     dARe = np.sqrt( ARe2/sample_size-ARe*ARe/(sample_size*sample_size) )
     dAIm = np.sqrt( AIm2/sample_size-AIm*AIm/(sample_size*sample_size) )
@@ -297,18 +316,22 @@ dARe_dict = {}
 AIm_dict = {}
 dAIm_dict = {}
 
-for parity in ["1", "0"]:
+for parity in ["1", "0", "2"]:
     for scheme in ["qq", "gg"]:
 
         if parity=="1": ntw = 3
-        else: ntw = 0
+        else: 
+            if parity=="2": ntw = 2
+            else: ntw = 0
 
         const_term = GF / np.sqrt(2.) * Vud * Vus * np.sqrt(3./2.) * np.sqrt(2.**ntw) / np.sqrt(2.) * a24IDinv**3 
         
         [ Z24IDgg, dZ24IDgg, Z24IDqq, dZ24IDqq ] = read_hummingtree_rst_file("24x64x24ID/24x64x24ID_ZBK_x3.8474_mass0.0011.rst")
-        #print Z24IDqq
-        #print dZ24IDqq
-        
+#        print Z24IDqq
+#        print dZ24IDqq
+#        print Z24IDgg
+#        print dZ24IDgg
+
         ### g,g
         [ Z24l, dZ24l, Z24h, dZ24h ] = load_nicolas_Z("L_all/L_naive_chiral_24cubed_"+scheme+".out", 1.4363, 3.) # 24I
         [ Z32l, dZ32l, Z32h, dZ32h ] = load_nicolas_Z("L_all/L_naive_chiral_32cubed_"+scheme+".out", 1.4363, 3.) # 24I
@@ -328,10 +351,10 @@ for parity in ["1", "0"]:
         Mlat = np.array([ MQ1lat, MQ7lat, MQ8lat ])
         Mlat_jack = [ np.array([ MQ1lat_jack[j], MQ7lat_jack[j], MQ8lat_jack[j] ]) for j in range(len(MQ1lat_jack)) ]
         
-        ### q,q
-        #[ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack )
-        ### g,g
-        [ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDgg, dZ24IDgg, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack, scheme )
+        if scheme=="qq":
+            [ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDqq, dZ24IDqq, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack, scheme )
+        else:
+            [ wcRe, dwcRe, wcIm, dwcIm ] = chiral_extrapolation( Z24l, dZ24l, Z24h, dZ24h, Z32l, dZ32l, Z32h, dZ32h, Z24IDgg, dZ24IDgg, Mlat, Mlat_jack, sqrtLL, sqrtLL_jack, scheme )
         
         ARe = wcRe * const_term
         dARe = dwcRe * const_term
@@ -354,6 +377,8 @@ for parity in ["1", "0"]:
     s4 = format_number_with_err_err(dAIm_dict[parity, "qq"]/AIm_scale, dAIm_npr/AIm_scale)
     print "$ %s_\\mathrm{stat.}%s_\\mathrm{NPR} $ & $ %s_\\mathrm{stat.}%s_\\mathrm{NPR} $" % ( s1, s2, s3, s4 )
 
+print "Done."
+
 def compute( x1, x2, y1, y2, X ):
     return (y2-y1)/(x2-x1)*(X-x1)+y1
 
@@ -362,8 +387,10 @@ dmK   = 0.00049
 
 Epp1  = 0.5634 
 dEpp1 = 0.0040
-Epp0  = 0.28221 
-dEpp0 = 0.00070
+#Epp0  = 0.28221 
+#dEpp0 = 0.00070
+Epp2  = 0.4768 
+dEpp2 = 0.0017
 
 order = 2
 sample_size = 100
@@ -383,12 +410,12 @@ for scheme in ["qq", "gg"]:
     for s in range(sample_size):
         smK = mK + np.random.normal(scale=dmK)
         sEpp1 = Epp1 + np.random.normal(scale=dEpp1)
-        sEpp0 = Epp0 + np.random.normal(scale=dEpp0)
+        sEpp0 = Epp2 + np.random.normal(scale=dEpp2)
 
         sARe1 = ARe_dict["1", scheme] + np.random.normal(scale=dARe_dict["1", scheme])
-        sARe0 = ARe_dict["0", scheme] + np.random.normal(scale=dARe_dict["0", scheme])
+        sARe0 = ARe_dict["2", scheme] + np.random.normal(scale=dARe_dict["2", scheme])
         sAIm1 = AIm_dict["1", scheme] + np.random.normal(scale=dAIm_dict["1", scheme])
-        sAIm0 = AIm_dict["0", scheme] + np.random.normal(scale=dAIm_dict["0", scheme])
+        sAIm0 = AIm_dict["2", scheme] + np.random.normal(scale=dAIm_dict["2", scheme])
         
         seARe = compute(sEpp1**order, sEpp0**order, sARe1, sARe0, smK**order)
         seAIm = compute(sEpp1**order, sEpp0**order, sAIm1, sAIm0, smK**order)
@@ -398,8 +425,8 @@ for scheme in ["qq", "gg"]:
         eAIm += seAIm
         eAIm2 += seAIm**2
     
-    central_tmpRe = compute(Epp1**order, Epp0**order, ARe_dict["1", scheme], ARe_dict["0", scheme], mK**order)
-    central_tmpIm = compute(Epp1**order, Epp0**order, AIm_dict["1", scheme], AIm_dict["0", scheme], mK**order)
+    central_tmpRe = compute(Epp1**order, Epp2**order, ARe_dict["1", scheme], ARe_dict["2", scheme], mK**order)
+    central_tmpIm = compute(Epp1**order, Epp2**order, AIm_dict["1", scheme], AIm_dict["2", scheme], mK**order)
     
     dARe = np.sqrt( eARe2/sample_size-eARe*eARe/(sample_size*sample_size) )
     dAIm = np.sqrt( eAIm2/sample_size-eAIm*eAIm/(sample_size*sample_size) )
@@ -409,8 +436,8 @@ for scheme in ["qq", "gg"]:
     edARe_dict[scheme] = dARe
     edAIm_dict[scheme] = dAIm
  
-    print "A_2 = %+.6e %.6e %+.6e %.6e" % ( central_tmpRe, dARe, central_tmpIm, dAIm ) 
-    print [ order, central_tmpRe, dARe, central_tmpIm, dAIm ]
+    # print "A_2 = %+.6e %.6e %+.6e %.6e" % ( central_tmpRe, dARe, central_tmpIm, dAIm ) 
+    # print [ order, central_tmpRe, dARe, central_tmpIm, dAIm ]
 
 edARe_npr = abs( eARe_dict["qq"] - eARe_dict["gg"] ) 
 edAIm_npr = abs( eAIm_dict["qq"] - eAIm_dict["gg"] ) 
